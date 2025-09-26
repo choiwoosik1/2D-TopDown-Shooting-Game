@@ -11,9 +11,9 @@ public class GunBullet : ProjectileBullet
         _count = count;
     }
 
-    protected override void Attack(Enemy enemy)
+    protected override void Attack(IDamageable target)
     {
-        base.Attack(enemy);
+        base.Attack(target);
 
         // 공격 횟수 모두 차감시 제거
         _count--;

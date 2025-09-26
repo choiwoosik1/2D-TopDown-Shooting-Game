@@ -22,13 +22,13 @@ public class Bullet : MonoBehaviour
         // 충돌한 게임 오브젝트 Layer가 _targetLayerMask에 포함되면
         if (_targetLayerMask.Contains(collision.gameObject.layer))
         {
-            // 충돌한 게임 오브젝트에서 Enemy 컴포넌트 가져오기
-            Enemy enemy = collision.gameObject.GetComponent<Enemy>();
+            // 충돌한 게임 오브젝트에서 IDamageable 인터페이스 가져오기
+            IDamageable target = collision.GetComponentInParent<IDamageable>();
 
             // Enemy 컴포넌트가 존재한다면
-            if(enemy != null)
+            if(target != null)
             {
-                Attack(enemy);
+                Attack(target);
             }
 
         }
@@ -38,8 +38,9 @@ public class Bullet : MonoBehaviour
     /// 적을 공격하는 함수
     /// </summary>
     /// <param name="enemy"></param>
-    protected virtual void Attack(Enemy enemy)
+    protected virtual void Attack(IDamageable target)
     {
         // 적이 데미지 입는 함수
+        target.TakeHit(_damage);
     }
 }

@@ -16,6 +16,7 @@ public class Player : MonoBehaviour
     public void Initialize()
     {
         _weapon.SetModel(_model);
+
         _model.OnSpeedChanged += _mover.SetMoveSpeed;
         _model.Initialize(_data.Speed, _data.CurrentHp, _data.MaxHp, _data.Damage);
 

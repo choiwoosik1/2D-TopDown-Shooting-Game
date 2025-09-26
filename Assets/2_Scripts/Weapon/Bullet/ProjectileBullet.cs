@@ -75,15 +75,17 @@ public class ProjectileBullet : Bullet
         else Destroy(gameObject);
     }
 
-    protected override void Attack(Enemy enemy)
+    protected override void Attack(IDamageable target)
     {
-        base.Attack(enemy);
+        base.Attack(target);
 
-        Rigidbody2D enemyRb = enemy.GetComponent<Rigidbody2D>();
-        if(enemyRb != null)
+        // IDamageable은 interface일 뿐 게임 오브젝트 기능 X
+        // target을 MonoBehavior 타입으로 바꾸기. Enemy나 Player는 MonoBehavior이기때문에 가능
+        Rigidbody2D Rb = (target as MonoBehaviour)?.GetComponent<Rigidbody2D>();
+        if(Rb != null)
         {
-            Vector2 knockBackDir = (enemy.transform.position -transform.position).normalized;
-            enemyRb.AddForce(knockBackDir * _knockBackForce, ForceMode2D.Impulse);
+            Vector2 knockBackDir = (Rb.transform.position -transform.position).normalized;
+            Rb.AddForce(knockBackDir * _knockBackForce, ForceMode2D.Impulse);
         }
 
         _poolable.ReturnToPool();

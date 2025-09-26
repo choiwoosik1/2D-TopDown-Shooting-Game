@@ -32,6 +32,8 @@ public class CombatCharacterModel : MonoBehaviour, IDamageable, IAttackable
         _maxHp = maxHp;
         _damage = damage;
 
+        _currentHp = _maxHp;
+
         OnHpChanged?.Invoke(_currentHp, _maxHp);
         OnSpeedChanged?.Invoke(_moveSpeed);
     }

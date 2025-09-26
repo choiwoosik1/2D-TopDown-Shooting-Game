@@ -46,6 +46,9 @@ public class Enemy : MonoBehaviour
     float _nextRoam, _nextAttack;
     Vector2 _roamDir;
 
+    /// <summary>
+    /// 읽기 전용 Property들
+    /// </summary>
     public PlayerData EnemyData => _enemyData;
     public Transform Target => _target;
     public float RoamDistance => _roamDistance;
@@ -83,26 +86,37 @@ public class Enemy : MonoBehaviour
     {
         _target = target;
 
+        // Model 초기화
         _model.Initialize(_enemyData.Speed, _enemyData.CurrentHp, _enemyData.MaxHp, _enemyData.Damage);
 
         _collider.enabled = true;
 
         _mover = (EnemyMover)_monoBehavior;
 
+        // 상태 객체 생성 및 테이블에 등록
         _states[(int)EnemyStateType.Idle] = new IdleState(this);
         _states[(int)EnemyStateType.Trace] = new TraceState(this);
         _states[(int)EnemyStateType.Combat] = new CombatState(this);
         _states[(int)EnemyStateType.Dead] = new DeadState(this);
 
+        // 초기화 시 Idle 상태로
         _currentState = _states[(int)EnemyStateType.Idle];
+        // 진입
         _currentState.Enter();
 
+        // 이벤트 구독
         _model.OnDead += OnDead;
 
-        if(_weapon != null) _weapon.SetModel(_model);
+        // Weapon 초기화
+        if (_weapon != null) 
+        {
+            _weapon.SetModel(_model);
+        }
+
 
         if (_weapon is EnemyFiringWeapon efw) efw.SetTarget(_target);
 
+        // 상태 판단 루프(생존 중에만 동작) 재시작 안전 처리
         if (_calculateStateRoutine != null)
         {
             StopCoroutine(_calculateStateRoutine);
@@ -113,8 +127,10 @@ public class Enemy : MonoBehaviour
 
     void OnDisable()
     {
+        // 이벤트 구독 해제
         _model.OnDead -= OnDead;
 
+        // 코루틴 정지
         if (_calculateStateRoutine != null)
         {
             StopCoroutine(_calculateStateRoutine);
@@ -122,10 +138,13 @@ public class Enemy : MonoBehaviour
         }
     }
 
+    // 일정 간격(_thinkSpan)으로 상태 판단
     IEnumerator CalculateStatRoutine()
     {
+        // Dead 상태이면 코루틴 종료
         while (_currentState.StateType != EnemyStateType.Dead)
         {
+            // 현재 상황 분석 및 상태 전환
             CalculateState();
             yield return new WaitForSeconds(_thinkSpan);
         }
@@ -134,6 +153,8 @@ public class Enemy : MonoBehaviour
 
     private void Update()
     {
+        // 아직 상태 준비 안되면 아무것도 하지 않음
+        // 클래스간 Start, Update 시작 순서에 대한 오류 방지
         if(_currentState == null)
         {
             return;
@@ -148,6 +169,7 @@ public class Enemy : MonoBehaviour
         _anim.SetFloat(AnimatorParameters.MoveSpeed, _currentSpeed);
 
         // 좌우 플립
+        // x 속도의 부호로 좌/우를 결정
         var vx = _mover?.velocity.x ?? 0.0f;
         if (MathF.Abs(vx) > Utils.Epsilon)
         {
@@ -160,14 +182,18 @@ public class Enemy : MonoBehaviour
     {
         if (_currentState.StateType == EnemyStateType.Dead) return;
 
+        // 타겟이 없으면 매우 먼 거리로 간주
         float dist = _target ? Vector2.Distance(transform.position, _target.position) : float.MaxValue;
 
+        // 1) 타겟이 없거나 거리가 너무 멀면 Idle
         if (_target == null || dist > _traceDistance)
             ChangeState(EnemyStateType.Idle);
 
+        // 추적 범위 내지만 공격 거리 밖이면 Trace
         else if (dist > _attackDistance)
             ChangeState(EnemyStateType.Trace);
 
+        // 공격 거리 이내면 Combat
         else
             ChangeState(EnemyStateType.Combat);
     }
@@ -197,25 +223,36 @@ public class Enemy : MonoBehaviour
     /// </summary>
     public void Attack()
     {
+        // 쿨타임 아직 안됐으면 리턴
         if (Time.time < _nextAttack) return;
         _nextAttack = Time.time + _attackSpan;
 
+        // 공격 애니메이션
         _anim.SetTrigger(AnimatorParameters.Fire);
 
+        // 무기 발사
         if(_weapon != null) _weapon.Attack();
     }
     
     void OnDead()
     {
+        // 상태 판단 루프 정지
         if(_calculateStateRoutine != null)
         {
             StopCoroutine(_calculateStateRoutine);
             _calculateStateRoutine = null;
         }
 
+        // Dead 상태로 전환
         ChangeState(EnemyStateType.Dead);
+
+        // 사망 애니메이션
         _anim.SetTrigger(AnimatorParameters.Death);
+
+        // 피격/충돌 불가
         _collider.enabled = false;
+
+        // 이동 정지
         _mover?.Stop();
     }
 
