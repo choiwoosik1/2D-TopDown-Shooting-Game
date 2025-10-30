@@ -9,13 +9,13 @@ public class PlayScene : MonoBehaviour
     [Header("---- 컴포넌트 참조 ----")]
     [SerializeField] Player _player;
     [SerializeField] InputHandler _inputHandler;
-    [SerializeField] Enemy _enemy;
     [SerializeField] Transform _target;
+    [SerializeField] EnemySpawner _spawn;
 
     private void Start()
     {
         _player.Initialize();
-        _enemy.Initialize(_target);
+        _spawn.Spawn();
 
         _inputHandler.OnMoveInput += OnMoveInput;
         _inputHandler.OnDashInput += OnDashInput;
