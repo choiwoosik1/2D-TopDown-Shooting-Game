@@ -11,222 +11,117 @@ public enum EdgeDirection
     Right,
 }
 
+/// <summary>
+/// Room 인스턴스를 관리하고 Door를 데이터 기반으로 생성하는 클래스
+/// </summary>
 public class Room : MonoBehaviour
 {
     public GameObject _prefab;
 
-    public void SetUpRoom(Cell currentCell, RoomScriptable room)
+    /// <summary>
+    /// Room 설정 (Prefab 생성 및 Door 배치)
+    /// </summary>
+    public void SetUpRoom(Cell currentCell, RoomScriptable roomData)
     {
-        var prefab = room._roomVariations[Random.Range(0, room._roomVariations.Length)];
+        // 랜덤한 방 Variation 선택
+        var prefab = roomData._roomVariations[Random.Range(0, roomData._roomVariations.Length)];
 
         var spawnedRoom = Instantiate(prefab, transform);
         spawnedRoom.transform.localPosition = Vector3.zero;
         spawnedRoom.transform.localRotation = Quaternion.identity;
         spawnedRoom.transform.localScale = Vector3.one;
 
+        // 데이터 기반 Door 생성
+        SetUpDoorsFromData(currentCell, roomData);
+    }
 
+    /// <summary>
+    /// RoomScriptable의 doorSpawnPoints 데이터를 기반으로 Door 생성
+    /// </summary>
+    private void SetUpDoorsFromData(Cell currentCell, RoomScriptable roomData)
+    {
         var floorPlan = MapGenerator.instance.GetFloorPlan;
         var cellList = MapGenerator.instance.GetSpawnCells;
 
-        switch (currentCell._roomShape)
+        // 각 DoorSpawnPoint에 대해 Door 생성 시도
+        foreach (var spawnPoint in roomData.doorSpawnPoints)
         {
-            case RoomShape.OneByOne:
-                SetUpOneByOne(currentCell, floorPlan, cellList);
-                break;
+            // Cell 인덱스 유효성 검사
+            if (spawnPoint.cellIndex < 0 || spawnPoint.cellIndex >= currentCell._cellList.Count)
+            {
+                Debug.LogWarning($"[Room] Invalid cell index {spawnPoint.cellIndex} in {roomData.name}");
+                continue;
+            }
 
-            case RoomShape.OneByTwo:
-                SetUpOneByTwo(currentCell, floorPlan, cellList);
-                break;
+            int fromCellIndex = currentCell._cellList[spawnPoint.cellIndex];
 
-            case RoomShape.TwoByOne:
-                SetUpTwoByOne(currentCell, floorPlan, cellList);
-                break;
-
-            case RoomShape.TwoByTwo:
-                SetUpTwoByTwo(currentCell, floorPlan, cellList);
-                break;
-
-            case RoomShape.LShape:
-                SetUpLShapeRoom(currentCell, floorPlan, cellList);
-                break;
-
-            default:
-                break;
+            TryPlaceDoor(
+                fromCellIndex,
+                spawnPoint.positionOffset,
+                spawnPoint.direction,
+                floorPlan,
+                cellList,
+                currentCell
+            );
         }
     }
 
-    public void SetUpOneByOne(Cell cell, int[] floorPlan, List<Cell> cellList)
-    {
-        var currentCell = cell._cellList[0];
-
-        TryPlaceDoor(currentCell, new Vector2(0, 4f), EdgeDirection.Up, floorPlan, cellList, cell);
-        TryPlaceDoor(currentCell, new Vector2(0, -4f), EdgeDirection.Down, floorPlan, cellList, cell);
-        TryPlaceDoor(currentCell, new Vector2(-9.4f, 0), EdgeDirection.Left, floorPlan, cellList, cell);
-        TryPlaceDoor(currentCell, new Vector2(9.4f, 0), EdgeDirection.Right, floorPlan, cellList, cell);
-
-    }
-    public void SetUpOneByTwo(Cell cell, int[] floorPlan, List<Cell> cellList)
-    {
-        var cellA = cell._cellList[0];
-        var cellB = cell._cellList[1];
-
-        TryPlaceDoor(cellA, new Vector2(0f, 9.4f), EdgeDirection.Up, floorPlan, cellList, cell);
-        TryPlaceDoor(cellA, new Vector2(-9.4f, 5.1f), EdgeDirection.Left, floorPlan, cellList, cell);
-        TryPlaceDoor(cellA, new Vector2(9.4f, 5.1f), EdgeDirection.Right, floorPlan, cellList, cell);
-
-        TryPlaceDoor(cellB, new Vector2(0f, -9.4f), EdgeDirection.Down, floorPlan, cellList, cell);
-        TryPlaceDoor(cellB, new Vector2(-9.4f, -5.1f), EdgeDirection.Left, floorPlan, cellList, cell);
-        TryPlaceDoor(cellB, new Vector2(9.4f, -5.1f), EdgeDirection.Right, floorPlan, cellList, cell);
-    }
-    public void SetUpTwoByOne(Cell cell, int[] floorPlan, List<Cell> cellList)
-    {
-        var cellA = cell._cellList[0];
-        var cellB = cell._cellList[1];
-
-        TryPlaceDoor(cellA, new Vector2(-10.8f, 4.21f), EdgeDirection.Up, floorPlan, cellList, cell);
-        TryPlaceDoor(cellA, new Vector2(-20f, 0f), EdgeDirection.Left, floorPlan, cellList, cell);
-        TryPlaceDoor(cellA, new Vector2(-10.8f, -4.21f), EdgeDirection.Down, floorPlan, cellList, cell);
-
-        TryPlaceDoor(cellB, new Vector2(10.8f, 4.21f), EdgeDirection.Up, floorPlan, cellList, cell);
-        TryPlaceDoor(cellB, new Vector2(10.8f, -4.21f), EdgeDirection.Down, floorPlan, cellList, cell);
-        TryPlaceDoor(cellB, new Vector2(20f, 0f), EdgeDirection.Right, floorPlan, cellList, cell);
-    }
-    public void SetUpTwoByTwo(Cell cell, int[] floorPlan, List<Cell> cellList)
-    {
-        var cellA = cell._cellList[0];
-        var cellB = cell._cellList[1];
-        var cellC = cell._cellList[2];
-        var cellD = cell._cellList[3];
-
-        TryPlaceDoor(cellA, new Vector2(-10.65f, 9.26f), EdgeDirection.Up, floorPlan, cellList, cell);
-        TryPlaceDoor(cellB, new Vector2(10.65f, 9.26f), EdgeDirection.Up, floorPlan, cellList, cell);
-
-        TryPlaceDoor(cellA, new Vector2(-20f, 5.21f), EdgeDirection.Left, floorPlan, cellList, cell);
-        TryPlaceDoor(cellC, new Vector2(-20f, -5.21f), EdgeDirection.Left, floorPlan, cellList, cell);
-
-        TryPlaceDoor(cellC, new Vector2(-10.65f, -9.26f), EdgeDirection.Down, floorPlan, cellList, cell);
-        TryPlaceDoor(cellD, new Vector2(10.65f, -9.26f), EdgeDirection.Down, floorPlan, cellList, cell);
-
-        TryPlaceDoor(cellB, new Vector2(20f, 5.21f), EdgeDirection.Right, floorPlan, cellList, cell);
-        TryPlaceDoor(cellD, new Vector2(20f, -5.21f), EdgeDirection.Right, floorPlan, cellList, cell);
-    }
-    public void SetUpLShapeRoom(Cell cell, int[] floorPlan, List<Cell> cellList)
-    {
-        var cellA = cell._cellList[0];
-        var cellB = cell._cellList[1];
-        var cellC = cell._cellList[2];
-
-        if (cellA + 1 == cellB && cellA + 10 == cellC)
-        {
-            TryPlaceDoor(cellA, new Vector2(-10.64f, 9.41f), EdgeDirection.Up, floorPlan, cellList, cell);
-            TryPlaceDoor(cellA, new Vector2(-20f, 5f), EdgeDirection.Left, floorPlan, cellList, cell);
-
-            TryPlaceDoor(cellB, new Vector2(10.64f, 9.41f), EdgeDirection.Up, floorPlan, cellList, cell);
-            TryPlaceDoor(cellB, new Vector2(20f, 5.26f), EdgeDirection.Right, floorPlan, cellList, cell);
-            TryPlaceDoor(cellB, new Vector2(10.64f, 1f), EdgeDirection.Down, floorPlan, cellList, cell);
-
-            TryPlaceDoor(cellC, new Vector2(-10.64f, -9.41f), EdgeDirection.Down, floorPlan, cellList, cell);
-            TryPlaceDoor(cellC, new Vector2(-1f, -5.26f), EdgeDirection.Right, floorPlan, cellList, cell);
-            TryPlaceDoor(cellC, new Vector2(-20f, -5f), EdgeDirection.Left, floorPlan, cellList, cell);
-        }
-        else if (cellA + 1 == cellB && cellB + 10 == cellC)
-        {
-            TryPlaceDoor(cellA, new Vector2(-10.64f, 9.41f), EdgeDirection.Up, floorPlan, cellList, cell);
-            TryPlaceDoor(cellA, new Vector2(-20f, 5f), EdgeDirection.Left, floorPlan, cellList, cell);
-            TryPlaceDoor(cellA, new Vector2(-10.64f, 1f), EdgeDirection.Down, floorPlan, cellList, cell);
-
-            TryPlaceDoor(cellB, new Vector2(10.64f, 9.41f), EdgeDirection.Up, floorPlan, cellList, cell);
-            TryPlaceDoor(cellB, new Vector2(20f, 5f), EdgeDirection.Right, floorPlan, cellList, cell);
-
-            TryPlaceDoor(cellC, new Vector2(10.64f, -9.41f), EdgeDirection.Down, floorPlan, cellList, cell);
-            TryPlaceDoor(cellC, new Vector2(20f, -5.26f), EdgeDirection.Right, floorPlan, cellList, cell);
-            TryPlaceDoor(cellC, new Vector2(1, -5f), EdgeDirection.Left, floorPlan, cellList, cell);
-        }
-        else if (cellA + 10 == cellB)
-        {
-            TryPlaceDoor(cellA, new Vector2(-10.64f, 9.41f), EdgeDirection.Up, floorPlan, cellList, cell);
-            TryPlaceDoor(cellA, new Vector2(-20f, 5f), EdgeDirection.Left, floorPlan, cellList, cell);
-            TryPlaceDoor(cellA, new Vector2(-1f, 5f), EdgeDirection.Right, floorPlan, cellList, cell);
-
-            TryPlaceDoor(cellB, new Vector2(-10.64f, -9.41f), EdgeDirection.Down, floorPlan, cellList, cell);
-            TryPlaceDoor(cellB, new Vector2(-20f, -5f), EdgeDirection.Left, floorPlan, cellList, cell);
-
-            TryPlaceDoor(cellC, new Vector2(10.64f, -1), EdgeDirection.Up, floorPlan, cellList, cell);
-            TryPlaceDoor(cellC, new Vector2(10.64f, -9.41f), EdgeDirection.Down, floorPlan, cellList, cell);
-            TryPlaceDoor(cellC, new Vector2(20f, -5.26f), EdgeDirection.Right, floorPlan, cellList, cell);
-        }
-        else if (cellA + 10 == cellC)
-        {
-            TryPlaceDoor(cellA, new Vector2(10.64f, 9.41f), EdgeDirection.Up, floorPlan, cellList, cell);
-            TryPlaceDoor(cellA, new Vector2(1, 5f), EdgeDirection.Left, floorPlan, cellList, cell);
-            TryPlaceDoor(cellA, new Vector2(20f, 5f), EdgeDirection.Right, floorPlan, cellList, cell);
-
-            TryPlaceDoor(cellB, new Vector2(-5.3125f, -1f), EdgeDirection.Up, floorPlan, cellList, cell);
-            TryPlaceDoor(cellB, new Vector2(-10.64f, -9.41f), EdgeDirection.Down, floorPlan, cellList, cell);
-            TryPlaceDoor(cellB, new Vector2(-20f, -5f), EdgeDirection.Left, floorPlan, cellList, cell);
-
-            TryPlaceDoor(cellC, new Vector2(10.64f, -9.41f), EdgeDirection.Down, floorPlan, cellList, cell);
-            TryPlaceDoor(cellC, new Vector2(20f, -5f), EdgeDirection.Right, floorPlan, cellList, cell);
-        }
-    }
-
+    /// <summary>
+    /// 지정된 위치에 Door 배치 시도 (인접한 방이 있을 경우에만)
+    /// </summary>
     void TryPlaceDoor(int fromIndex, Vector2 positionOffset, EdgeDirection direction, int[] floorPlan, List<Cell> cellList, Cell currentCell)
     {
         int neighbourIndex = fromIndex + GetOffset(direction);
 
+        // 경계 체크
         if (neighbourIndex < 0 || neighbourIndex >= floorPlan.Length) return;
 
+        // 인접 셀이 방으로 채워져 있는지 확인
         if (floorPlan[neighbourIndex] != 1) return;
 
+        // 인접한 Cell 찾기
         var foundCell = cellList.FirstOrDefault(x => x._cellList.Contains(neighbourIndex));
+        if (foundCell == null) return;
 
-        var door = Instantiate(RoomManager.instance._doorPrefab, transform);
+        // Door 타입 결정 (현재 방이 Regular면 인접 방 타입, 아니면 현재 방 타입)
+        RoomType doorRoomType = currentCell._roomType == RoomType.Regular ? foundCell._roomType : currentCell._roomType;
 
-        door.transform.position = (Vector2)transform.position + positionOffset;
+        // Door Prefab 생성
+        var doorInstance = Instantiate(RoomManager.instance._doorPrefab, transform);
+        doorInstance.transform.position = (Vector2)transform.position + positionOffset;
 
-        SetUpDoor(door, direction, currentCell._roomType == RoomType.Regular ? foundCell._roomType : currentCell._roomType);
-
-        if (door._doorPrefab != null)
+        // Door ScriptableObject에서 Prefab 데이터 가져오기
+        var doorScriptable = GetDoorScriptable(doorRoomType);
+        if (doorScriptable == null)
         {
-            var visual = Instantiate(door._doorPrefab, door.transform);
-            visual.transform.localPosition = Vector3.zero;
-            visual.transform.localRotation = Quaternion.identity;
-            visual.transform.localScale = Vector3.one;
+            Debug.LogWarning($"[Room] No DoorScriptable found for RoomType: {doorRoomType}");
+            Destroy(doorInstance.gameObject);
+            return;
         }
+
+        var prefabData = doorScriptable.GetDoorPrefabData(direction);
+        if (prefabData == null)
+        {
+            Debug.LogWarning($"[Room] No DoorPrefabData found for Direction: {direction}");
+            Destroy(doorInstance.gameObject);
+            return;
+        }
+
+        // Door 초기화 (Closed/Open Prefab 전달)
+        doorInstance.Initialize(direction, doorRoomType, prefabData.closedPrefab, prefabData.openPrefab);
     }
 
-    void SetUpDoor(Door door, EdgeDirection direction, RoomType roomType)
-    {
-        var doorTypes = GetDoorOptions(roomType);
-
-        switch (direction)
-        {
-            case EdgeDirection.Up:
-                door.SetPrefab(doorTypes._upDoor);
-                break;
-
-            case EdgeDirection.Down:
-                door.SetPrefab(doorTypes._downDoor);
-                break;
-
-            case EdgeDirection.Left:
-                door.SetPrefab(doorTypes._leftDoor);
-                break;
-
-            case EdgeDirection.Right:
-                door.SetPrefab(doorTypes._rightDoor);
-                break;
-
-            default:
-                break;
-        }
-    }
-
-    DoorScriptable GetDoorOptions(RoomType roomType)
+    /// <summary>
+    /// RoomType에 맞는 DoorScriptable 반환
+    /// </summary>
+    DoorScriptable GetDoorScriptable(RoomType roomType)
     {
         return RoomManager.instance._doors.FirstOrDefault(x => x._roomType == roomType);
     }
 
+    /// <summary>
+    /// 방향에 따른 1D 배열 오프셋 계산
+    /// </summary>
     int GetOffset(EdgeDirection direction)
     {
         switch (direction)
